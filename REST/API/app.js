@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const db = require('./db')
+const {hashPassword, comparePassword, generateToken, verifyToken} = require('./auth')
 
 const app = express();
 const PORT = 5000;
@@ -8,13 +9,91 @@ const PORT = 5000;
 app.use(cors());
 app.use(express.json());
 
-// simple logger
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
     next();
 });
 
+function validateToken(req, res, next) {
+    const authHeader = req.headers['authentication']
+    const token = authHeader.split(' ')[1]
+
+    if(!token) {
+        res.status(401).json({error: 'No token found'})
+    }
+
+    const decoded = verifyToken(token)
+    if(!decoded) {
+        return res.status(403).json({error: 'Invalid or expired token'})
+    }
+
+    req.user = decoded
+    next()
+}
+
 const itemsCollection = db.collection('items')
+const usersCollection = db.collection('users')
+
+app.post('/register', async (req, res) => {
+    try {
+        const {email, password} = req.body
+
+        const hashedPassword = await hashPassword(password)
+
+        //check if the user is already registered
+        
+        const newUser = {
+            email,
+            password: hashedPassword
+        }
+
+        const docRef = await usersCollection.add(newUser)
+        res.status(201).json(
+            {
+                userId: docRef.id
+            }
+        )
+    } catch(error) {
+        console.log(error)
+        res.status(500).json({error: 'Registration failed'})
+    }
+    
+    
+})
+
+app.post('/login', async (req, res) => {
+    try {
+        const {email, password} = req.body
+        const snapshot = await usersCollection.where('email', '==', email).get()
+        
+        if (snapshot.empty) {
+            return res.status(401).json({error: 'User does not exist'})
+        }
+
+        const userDoc = snapshot.docs[0]
+        const user = {
+            id: userDoc.id,
+            ...userDoc.data()
+        }
+
+        const passIsValid = await comparePassword(password, user.password)
+
+        if(!passIsValid) {
+            return res.status(401).json({error: 'Invalid password'})
+        }
+
+        const token = generateToken({
+            id: user.id, 
+            email: user.email
+        })
+
+        res.status(200).json({token})
+
+    } catch(error) {
+        console.log(error)
+        res.status(500).json({error: 'Authentication failed'})
+    }
+})
 
 app.get('/items', async (req, res) => {
     try {
@@ -49,7 +128,7 @@ app.get('/items/:id', (req, res) => {
   res.json(item);
 });
 
-app.post('/items', async (req, res) => {
+app.post('/items', validateToken, async (req, res) => {
     const { name, price } = req.body;
   
     if (typeof name !== 'string' || name.trim() === '' || price === undefined) {
@@ -67,7 +146,7 @@ app.post('/items', async (req, res) => {
     res.status(201).json({ id: docRef.id });
 });
 
-app.put('/items/:id', (req, res) => {
+app.put('/items/:id', validateToken, (req, res) => {
     const id = Number(req.params.id);
     const idx = items.findIndex(i => i.id === id);
   
@@ -87,7 +166,7 @@ app.put('/items/:id', (req, res) => {
     res.json(items[idx]);
 });
 
-app.delete('/items/:id', (req, res) => {
+app.delete('/items/:id', validateToken, (req, res) => {
     const id = Number(req.params.id);
     const idx = items.findIndex(i => i.id === id);
   
