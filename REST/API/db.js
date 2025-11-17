@@ -1,13 +1,21 @@
-const admin = require('firebase-admin')
+const admin = require('firebase-admin');
 
+/**
+ * Initialize Firebase Admin SDK and return Firestore database instance
+ * Uses the singleton pattern - Firebase is initialized only once
+ * @returns {admin.firestore.Firestore} Firestore database instance
+ */
 function initializeFirestore() {
+    // Initialize Firebase Admin with service account credentials
     admin.initializeApp({
         credential: admin.credential.cert(require('./serviceAccount.json'))
-    })
+    });
 
-    return admin.firestore()
+    // Return Firestore database instance
+    return admin.firestore();
 }
 
-const db = initializeFirestore()
+// Initialize and export the database instance
+const db = initializeFirestore();
 
-module.exports = db
+module.exports = db;
