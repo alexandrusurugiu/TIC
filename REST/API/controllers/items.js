@@ -72,7 +72,6 @@ const updateItem = async (req, res) => {
             return res.status(404).json({ error: 'Item not found' });
         }
 
-        // Build update object with only provided fields
         const updateData = {};
         if (name !== undefined) updateData.name = name;
         if (price !== undefined) updateData.price = parseFloat(price);

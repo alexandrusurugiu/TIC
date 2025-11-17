@@ -30,7 +30,6 @@ const login = async (req, res) => {
             })
         }
 
-        // Generate JWT token
         const token = generateToken({
             id: user.id,
             email: user.email
@@ -63,7 +62,6 @@ const register = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Check if user already exists
         const userExists = await checkEmailExists(email);
 
         if (userExists) {
@@ -72,7 +70,6 @@ const register = async (req, res) => {
             });
         }
 
-        // Hash password and create user
         const hashedPassword = await hashPassword(password);
         const newUser = {
             email,
@@ -82,7 +79,6 @@ const register = async (req, res) => {
 
         const userId = await create(newUser);
 
-        // Generate JWT token for automatic login
         const token = generateToken({
             id: userId,
             email: email

@@ -5,7 +5,6 @@ const usersCollection = db.collection('users')
 
 const findByEmail = async (email) => {
 
-        // Find user by email
         const snapshot = await usersCollection
             .where('email', '==', email)
             .get();
